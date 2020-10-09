@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 import argparse
+import pickle
+import os
 
 import tensorflow as tf
 from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input, decode_predictions
@@ -37,23 +39,35 @@ class GradCAM:
         overLayed = 255 * overLayed / np.max(overLayed)
         return overLayed
 
-def preProcessImage(imagePath):
-    image = I.load_img(imagePath, target_size=(224,224))
-    image = I.img_to_array(image)
-    image = np.reshape(image,(1, 224,224,3))
-    image = preprocess_input(image)
+def preProcessImages(imagePath):
+
+    images = []
+
+    for root, dirs, files in os.walk(imagePath):
+        for name in files:
+            image = I.load_img(os.path.join(root,name), target_size=(224,224))
+            image = I.img_to_array(image)
+            image = np.reshape(image,(224, 224,3))
+            images.append(image)
+
+    images = np.array(images)
+    print(images.shape)
+
+    image = preprocess_input(images)
+
     return image
 
 def parseArgs():
     parser = argparse.ArgumentParser(description='GradCAM')
-    parser.add_argument('--imagePath', default='images/dog.jpeg', type=str)
-    parser.add_argument('--resultsPath', default='images/heatmap_dog.jpeg', type=str)
+    parser.add_argument('--imagePath', default='images/', type=str)
+    parser.add_argument('--dataPath', default='images/', type=str)
+    parser.add_argument('--resultsPath', default='images/heatmap_', type=str)
 
     return parser.parse_args()
 
 def main():
     args = parseArgs()
-    image = preProcessImage(args.imagePath)
+    image = preProcessImages(args.imagePath)
     model = VGG16(weights='imagenet')
     gradCAM = GradCAM(model, 'block5_conv3')
     locMap = gradCAM.getLocalizationMap(image)
