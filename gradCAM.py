@@ -41,7 +41,7 @@ class GradCAM:
         overLayed = 255 * overLayed / np.max(overLayed)
         return overLayed
 
-def preProcessImages(imagePath):
+def preProcessImage(imagePath):
 
     image = I.load_img(imagePath, target_size=(224,224))
     image = I.img_to_array(image)
