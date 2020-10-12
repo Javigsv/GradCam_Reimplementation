@@ -43,20 +43,10 @@ class GradCAM:
 
 def preProcessImages(imagePath):
 
-    images = []
-
-    for root, dirs, files in os.walk(imagePath):
-        for name in files:
-            image = I.load_img(os.path.join(root,name), target_size=(224,224))
-            image = I.img_to_array(image)
-            image = np.reshape(image,(224, 224,3))
-            images.append(image)
-
-    images = np.array(images)
-    print(images.shape)
-
-    image = preprocess_input(images)
-
+    image = I.load_img(imagePath, target_size=(224,224))
+    image = I.img_to_array(image)
+    image = np.reshape(image,(1, 224,224,3))
+    image = preprocess_input(image)
     return image
 
 def parseArgs():
