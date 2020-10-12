@@ -1,9 +1,11 @@
+from argparse import HelpFormatter
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 import argparse
-import pickle
 import os
+import pickle
+from numpy.lib.function_base import insert
 
 import tensorflow as tf
 from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input, decode_predictions
@@ -26,7 +28,7 @@ class GradCAM:
         alpha_c_k = tf.reduce_mean(grads, axis=(1,2))
         locMap = np.maximum(tf.reduce_sum(tf.multiply(alpha_c_k, featureMaps), axis=3).numpy()[0], 0)
         # 14 x 14 Map
-        return locMap
+        return locMap, c
 
     def getHeatmap(self, locMap, image):
         locMapResized = cv2.resize(locMap, (224, 224))
@@ -61,18 +63,26 @@ def parseArgs():
     parser = argparse.ArgumentParser(description='GradCAM')
     parser.add_argument('--imagePath', default='images/', type=str)
     parser.add_argument('--dataPath', default='images/', type=str)
-    parser.add_argument('--resultsPath', default='images/heatmap_', type=str)
+    parser.add_argument('--resultsPath', default='heatmaps/', type=str)
 
     return parser.parse_args()
 
 def main():
     args = parseArgs()
-    image = preProcessImages(args.imagePath)
-    model = VGG16(weights='imagenet')
-    gradCAM = GradCAM(model, 'block5_conv3')
-    locMap = gradCAM.getLocalizationMap(image)
-    heatMap = gradCAM.getHeatmap(locMap, image)
-    plt.imsave(args.resultsPath, np.uint8(heatMap))
+
+    for root, dirs, files in os.walk(args.dataPath):
+        for name in files:
+            path = os.path.join(root, name)
+            image = preProcessImage(path)
+            model = VGG16(weights='imagenet')
+            gradCAM = GradCAM(model, 'block5_conv3')
+            locMap, c = gradCAM.getLocalizationMap(image)
+            heatMap = gradCAM.getHeatmap(locMap, image)
+            
+            labelsMap = pickle.load(open('labelsMap.p', 'rb'))
+            label = '_' + labelsMap[c] + '.'
+            name = label.join(name.split('.'))
+            plt.imsave(args.resultsPath + name, np.uint8(heatMap))
 
 
 if __name__ == "__main__":
