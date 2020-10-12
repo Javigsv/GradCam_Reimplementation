@@ -53,12 +53,16 @@ def parseArgs():
     parser = argparse.ArgumentParser(description='GradCAM')
     parser.add_argument('--imagePath', default='images/', type=str)
     parser.add_argument('--dataPath', default='images/', type=str)
-    parser.add_argument('--resultsPath', default='heatmaps/', type=str)
+    parser.add_argument('--resultsPath', default='heatmaps/heatmap_', type=str)
 
     return parser.parse_args()
 
 def main():
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
     args = parseArgs()
+
+    resultsFile = open('./classRelation.txt', 'w')
 
     for root, dirs, files in os.walk(args.dataPath):
         for name in files:
@@ -70,10 +74,10 @@ def main():
             heatMap = gradCAM.getHeatmap(locMap, image)
             
             labelsMap = pickle.load(open('labelsMap.p', 'rb'))
-            label = '_' + labelsMap[c] + '.'
-            name = label.join(name.split('.'))
+            resultsFile.write(path + ' ---> ' + labelsMap[c] + '\n')
             plt.imsave(args.resultsPath + name, np.uint8(heatMap))
 
+    resultsFile.close()
 
 if __name__ == "__main__":
     main()
