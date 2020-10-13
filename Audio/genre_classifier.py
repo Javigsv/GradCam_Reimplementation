@@ -73,7 +73,7 @@ def get_augment_pitch_shift_spect(y, sr, n_steps):
     return y_augmented_spect
 
 
-def generate_dataset(ref_table):
+def generate_dataset(ref_table, data_augmentation=False):
     """
     The dataset consists on the spectrograms of the original signal and also of four different
     augmentations (2 time strechi g and 2 pitch shifting)
@@ -85,18 +85,19 @@ def generate_dataset(ref_table):
         spectrogram = librosa.feature.melspectrogram(audio_signal, sr, n_mels=128)
         dataset.append((spectrogram, song.genre_number))
         
-        spect_augment_1 = get_augment_time_strech_spect(audio_signal, sr, rate = 0.8)
-        dataset.append((spect_augment_1, song.genre_number))
+        if data_augmentation:
+            spect_augment_1 = get_augment_time_strech_spect(audio_signal, sr, rate = 0.8)
+            dataset.append((spect_augment_1, song.genre_number))
 
-        spect_augment_2 = get_augment_time_strech_spect(audio_signal, sr, rate = 0.9)
-        dataset.append((spect_augment_2, song.genre_number))
+            spect_augment_2 = get_augment_time_strech_spect(audio_signal, sr, rate = 0.9)
+            dataset.append((spect_augment_2, song.genre_number))
 
-        spect_augment_3 = get_augment_pitch_shift_spect(audio_signal, sr, n_steps = 2)
-        dataset.append((spect_augment_3, song.genre_number))
+            spect_augment_3 = get_augment_pitch_shift_spect(audio_signal, sr, n_steps = 2)
+            dataset.append((spect_augment_3, song.genre_number))
+            
+            spect_augment_4 = get_augment_pitch_shift_spect(audio_signal, sr, n_steps = -2)
+            dataset.append((spect_augment_4, song.genre_number))
         
-        spect_augment_4 = get_augment_pitch_shift_spect(audio_signal, sr, n_steps = -2)
-        dataset.append((spect_augment_4, song.genre_number))
-    
     return dataset
 
 
