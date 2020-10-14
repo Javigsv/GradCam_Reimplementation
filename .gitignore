@@ -3,3 +3,4 @@ images/*
 heatmaps/*
 classRelation.txt
 evaluation.txt
+labels_json.json

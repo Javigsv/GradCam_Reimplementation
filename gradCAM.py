@@ -49,10 +49,12 @@ class GradCAM:
         overLayed = 255 * overLayed / np.max(overLayed)
         return overLayed
     
-    def evaluate(self, locMap, image, c):
+    def evaluate(self, locMap, imagePath, c):
+        image = I.load_img(imagePath,target_size=(224,224))
+        image = I.img_to_array(image)
         locMapResized = cv2.resize(locMap, (224, 224))
         heatmap = locMapResized / np.max(locMapResized)
-        _, thresh_img = cv2.threshold(np.uint8(heatmap*255), 50, 255, cv2.THRESH_BINARY)
+        _, thresh_img = cv2.threshold(np.uint8(heatmap*255), 30, 255, cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(thresh_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         black_img = np.zeros(image.shape).astype(image.dtype)
         color = [1, 1, 1]
@@ -90,8 +92,7 @@ def parseArgs():
     parser = argparse.ArgumentParser(description='GradCAM')
     parser.add_argument('--imagePath', default='None', type=str)
     parser.add_argument('--imageClass', default='None', type=str)
-    parser.add_argument('--dataPath', default='images/', type=str)
-    parser.add_argument('--pickle',default='None', type=str)
+    parser.add_argument('--folderPath', default='images/', type=str)
     parser.add_argument('--resultsPath', default='None', type=str)
     parser.add_argument('--layer', default='block5_conv3', type=str)
 
@@ -107,63 +108,28 @@ def mainMultipleImages(args):
     labelsMap = pickle.load(open('labelsMap.p', 'rb'))
     classificationFile = open('./classRelation.txt', 'w')
     resultsFile = open('./evaluation.txt', 'a')
-    
 
     t_drop = 0
     t_inc = 0
     n_im = 0
 
-    if not args.pickle == 'None':
+    for root, dirs, files in os.walk(args.folderPath):
+            for name in files:
+                path = os.path.join(root, name)
+                image = preProcessImage(path)
+                locMap, c, _ = gradCAM.getLocalizationMap(image)
+                heatMap = gradCAM.getHeatmap(locMap, image)
+                
+                classificationFile.write(path + ' ---> ' + labelsMap[c] + '\n')
 
-        val_in = open(args.pickle, "rb")
+                drop, inc = gradCAM.evaluate(locMap, path, c)
+                print(drop, inc)
+                t_drop += drop
+                t_inc += inc
+                n_im += 1
 
-        val = pickle.load(val_in)
-
-        Xval = val["image_data"]
-
-        np.random.seed(77)
-        np.random.shuffle(Xval)
-
-        Xval = Xval[:500]
-
-        bar = ChargingBar('Layer: ' + args.layer, max=Xval.shape[0], suffix='%(index)d/%(max)d [%(elapsed)ds / %(eta)ds / %(eta_td)s] (%(percent)d%%)')
-        for ind, image in enumerate(list(Xval)):
-            image = preProcessImageArray(image)
-            locMap, c, _ = gradCAM.getLocalizationMap(image)
-            heatMap = gradCAM.getHeatmap(locMap, image)
-            
-            classificationFile.write(str(ind) + ' ---> ' + labelsMap[c] + '\n')
-
-            drop, inc = gradCAM.evaluate(locMap, image, c)
-            t_drop += drop
-            t_inc += inc
-            n_im += 1
-
-            bar.next()
-
-            if not args.resultsPath == 'None':
-                plt.imsave(args.resultsPath + args.layer + '_' + str(ind) + '.jpg', np.uint8(heatMap))
-        
-        bar.finish()
-
-    elif not args.dataPath == 'None':
-
-        for root, dirs, files in os.walk(args.dataPath):
-                for name in files:
-                    path = os.path.join(root, name)
-                    image = preProcessImage(path)
-                    locMap, c, _ = gradCAM.getLocalizationMap(image)
-                    heatMap = gradCAM.getHeatmap(locMap, image)
-                    
-                    classificationFile.write(path + ' ---> ' + labelsMap[c] + '\n')
-
-                    drop, inc = gradCAM.evaluate(locMap, path, c)
-                    t_drop += drop
-                    t_inc += inc
-                    n_im += 1
-
-                    if not args.resultsPath == 'None':
-                        plt.imsave(args.resultsPath + args.layer + '_' + name, np.uint8(heatMap))
+                if not args.resultsPath == 'None':
+                    plt.imsave(args.resultsPath + args.layer + '_' + name, np.uint8(heatMap))
 
     resultsFile.write(args.layer + '\t' + str(t_drop/n_im) +'\t' + str(t_inc/n_im) + '\n')
 
@@ -187,9 +153,6 @@ def mainSimpleImage(args):
     plt.imsave(args.resultsPath + args.layer + '_' + str(c) + '_' + name, np.uint8(heatMap))
 
     labelsMap = pickle.load(open('labelsMap.p', 'rb'))
-    if not True:
-        for i,t in enumerate(top_c):
-            print(str(i) + '.    ' + str(t) + ' ---> ' + labelsMap[t] + '\n')
 
 
 def mainMultipleLayers(args):
@@ -197,27 +160,24 @@ def mainMultipleLayers(args):
     layers = ['block1_conv1', 'block1_conv2','block2_conv1','block2_conv2','block3_conv1','block3_conv2','block3_conv3','block4_conv1','block4_conv2','block4_conv3','block5_conv1','block5_conv2','block5_conv3']
     
     for layer in layers:
+        print('Layer:',layer)
         args.layer = layer
-        if not args.pickle == 'None':
-            mainMultipleImages(args)
-        else:    
+        if not args.imagePath == 'None':
             mainSimpleImage(args)
+        elif not args.folderPath == 'None':    
+            mainMultipleImages(args)
 
 def main():
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
     args = parseArgs()
 
-    if not args.imagePath == 'None':
-        if args.layer == 'list':
-            mainMultipleLayers(args)
-        else:
-            mainSimpleImage(args)
-    else:
-        if args.layer == 'list':
-            mainMultipleLayers(args)
-        else:
-            mainSimpleImage(args)
+    if args.layer == 'list':
+        mainMultipleLayers(args)
+    elif not args.imagePath == 'None':
+        mainSimpleImage(args)
+    elif not args.folderPath == 'None':
+        mainMultipleImages(args)
 
 
         
