@@ -6,8 +6,7 @@ import argparse
 import os
 import pickle
 from numpy.lib.function_base import average, insert
-
-from progress.bar import ChargingBar
+from tqdm import tqdm
 
 import tensorflow as tf
 from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input, decode_predictions
@@ -113,6 +112,7 @@ def mainMultipleImages(args):
     t_inc = 0
     n_im = 0
 
+    pbar = tqdm(total=3923)
     for root, dirs, files in os.walk(args.folderPath):
             for name in files:
                 path = os.path.join(root, name)
@@ -123,13 +123,14 @@ def mainMultipleImages(args):
                 classificationFile.write(path + ' ---> ' + labelsMap[c] + '\n')
 
                 drop, inc = gradCAM.evaluate(locMap, path, c)
-                print(drop, inc)
                 t_drop += drop
                 t_inc += inc
                 n_im += 1
 
                 if not args.resultsPath == 'None':
                     plt.imsave(args.resultsPath + args.layer + '_' + name, np.uint8(heatMap))
+                
+                pbar.update()
 
     resultsFile.write(args.layer + '\t' + str(t_drop/n_im) +'\t' + str(t_inc/n_im) + '\n')
 
