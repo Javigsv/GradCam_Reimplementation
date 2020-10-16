@@ -9,15 +9,17 @@ from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input
 from tensorflow.keras.applications.resnet import ResNet50
 import tensorflow.keras.applications.resnet as resnet
 import tensorflow.keras.preprocessing.image as I
+
 from time import gmtime, asctime
 
-from GradCAM import GradCAM
+from gradCAM import GradCAM
 from GradCAMPlusPlus import GradCAMPlusPlus
 
 def preProcessImage(imagePath, model, input_height, input_width):
     image = I.load_img(imagePath, target_size=(input_height, input_width))
     image = I.img_to_array(image)
     image = np.reshape(image,(1, input_height, input_width,3))
+
     if model == 'VGG16':
         image = preprocess_input(image)
     elif model == 'ResNet50':
@@ -60,6 +62,7 @@ def mainMultipleImages(args, input_height, input_width):
                     for name in files:
                         path = os.path.join(root, name)
                         image = preProcessImage(path, args.model, input_height, input_width)
+
                         locMap, c, _ = gradCAM.getLocalizationMap(image)
                         drop, inc = gradCAM.evaluate(locMap, path, c)
                         t_drop += drop
@@ -119,6 +122,7 @@ def mainSimpleImage(args, input_height, input_width):
             if is_conv in layer.name:
                 gradCAM = GradCAM(model, layer.name, input_height, input_width)
                 path = args.imagePath
+
                 image = preProcessImage(path, args.model, input_height, input_width)
                 c = classMap.get(args.imageClass, args.imageClass)
                 locMap, _, _ = gradCAM.getLocalizationMap(image, c)
@@ -139,7 +143,9 @@ def mainSimpleImage(args, input_height, input_width):
 
         gradCAM = GradCAM(model, layer_name, input_height, input_width)
         path = args.imagePath
+
         image = preProcessImage(path, args.model, input_height, input_width)   
+
         locMap, _, _ = gradCAM.getLocalizationMap(image, c)
         gradCAMpp = GradCAMPlusPlus(model, layer_name, input_height, input_width)
         locMappp, _= gradCAMpp.getLocalizationMap(image, c)
