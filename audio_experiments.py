@@ -5,48 +5,41 @@ import argparse
 import os
 import pickle
 import tensorflow as tf
-from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input 
-from tensorflow.keras.applications.resnet import ResNet50
-import tensorflow.keras.applications.resnet as resnet
+from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input, decode_predictions
+from tensorflow.keras.applications.resnet import ResNet50, preprocess_input, decode_predictions
+import tensorflow.keras.preprocessing.image as I
 
 from time import gmtime, asctime
 
-from gradCAM import GradCAM
-from GradCAMPlusPlus import GradCAMPlusPlus
+from GradCAM import GradCAM
+#from GradCAMPlusPlus import GradCAMPlusPlus
 
-def preProcessImage(imagePath, model):
+def preProcessImage(imagePath):
     image = I.load_img(imagePath, target_size=(224,224))
     image = I.img_to_array(image)
-    image = np.reshape(image,(1, 224,224,3))
-    if model == 'VGG16':
-        image = preprocess_input(image)
-    elif model == 'ResNet50':
-        image = resnet.preprocess_input(image)
+    image = np.reshape(image,(1, 224, 224, 3))
+    image = preprocess_input(image)
     return image
 
 
 def parseArgs():
     parser = argparse.ArgumentParser(description='GradCAM')
     parser.add_argument('--imagePath', default='None', type=str)
-    parser.add_argument('--model', default='VGG16', type=str)
+    parser.add_argument('--modelPath', default='model/model_songsWithTags_20000.h5', type=str)
     parser.add_argument('--imageClass', default='None', type=str)
     parser.add_argument('--folderPath', default='images/', type=str)
     parser.add_argument('--resultsPath', default='None', type=str)
     parser.add_argument('--layer', default='last', type=str)
     return parser.parse_args()
 
-
+"""
 def mainMultipleImages(args):
 
     resultsFile = open('./eval/evaluation'+ asctime(gmtime()).replace(' ','_').replace(':','')+'.txt', 'a')
-    if args.model == 'VGG16':
-        model = VGG16(weights='imagenet')
-        is_conv = 'conv'
-        resultsFile.write(args.model + '\n')
-    if args.model == 'ResNet50':
-        model = ResNet50(weights='imagenet')
-        is_conv = '_conv'
-        resultsFile.write(args.model + '\n')
+    model = tf.keras.models.load_model(args.modelPath)
+    is_conv = 'conv'
+    
+    #resultsFile.write(args.model + '\n')
 
     if args.layer == 'all':
         for layer in model.layers:
@@ -59,7 +52,7 @@ def mainMultipleImages(args):
                 for root, _, files in os.walk(args.folderPath):
                     for name in files:
                         path = os.path.join(root, name)
-                        image = preProcessImage(path, args.model)
+                        image = preProcessImage(path)
                         locMap, c, _ = gradCAM.getLocalizationMap(image)
                         drop, inc = gradCAM.evaluate(locMap, path, c)
                         t_drop += drop
@@ -88,7 +81,7 @@ def mainMultipleImages(args):
         for root, _, files in os.walk(args.folderPath):
             for name in files:
                 path = os.path.join(root, name)
-                image = preProcessImage(path, args.model)
+                image = preProcessImage(path)
                 locMap, c, _ = gradCAM.getLocalizationMap(image)
                 drop, inc = gradCAM.evaluate(locMap, path, c)
                 t_drop += drop
@@ -99,15 +92,12 @@ def mainMultipleImages(args):
                     plt.imsave(args.resultsPath + layer_name + '_' + name, np.uint8(heatMap))
         resultsFile.write(layer_name + '\t' + str(t_drop/n_im) +'\t' + str(t_inc/n_im) + '\n')
         resultsFile.close()
+"""
 
 def mainSimpleImage(args):
-    if args.model == 'VGG16':
-        model = VGG16(weights='imagenet')
-        is_conv = 'conv'
-    if args.model == 'ResNet50':
-        model = ResNet50(weights='imagenet')
-        is_conv = '_conv'
-    
+    model = tf.keras.models.load_model(args.modelPath)
+    is_conv = 'conv'
+        
     classMap = pickle.load(open('classMap.p', 'rb'))
     
     c = None
@@ -119,7 +109,7 @@ def mainSimpleImage(args):
             if is_conv in layer.name:
                 gradCAM = GradCAM(model, layer.name)
                 path = args.imagePath
-                image = preProcessImage(path, args.model)
+                image = preProcessImage(path, )
                 c = classMap.get(args.imageClass, args.imageClass)
                 locMap, _, _ = gradCAM.getLocalizationMap(image, c)
                 if args.resultsPath != 'None':
@@ -139,16 +129,16 @@ def mainSimpleImage(args):
 
         gradCAM = GradCAM(model, layer_name)
         path = args.imagePath
-        image = preProcessImage(path, args.model)   
+        image = preProcessImage(path)   
         locMap, _, _ = gradCAM.getLocalizationMap(image, c)
-        gradCAMpp = GradCAMPlusPlus(model, layer_name)
-        locMappp, _= gradCAMpp.getLocalizationMap(image, c)
+        #gradCAMpp = GradCAMPlusPlus(model, layer_name)
+        #locMappp, _= gradCAMpp.getLocalizationMap(image, c)
 
         if args.resultsPath != 'None':
             heatMap = gradCAM.getHeatmap(locMap, image)
             name = os.path.split(path)[-1]
             plt.imsave(args.resultsPath + layer_name + '_' + str(c) + name, np.uint8(heatMap))
-            plt.imsave(args.resultsPath + layer_name + '_++' + str(c) + name, np.uint8(gradCAMpp.getHeatmap(locMappp, image)))
+            #plt.imsave(args.resultsPath + layer_name + '_++' + str(c) + name, np.uint8(gradCAMpp.getHeatmap(locMappp, image)))
 
 
 def main():
@@ -156,8 +146,8 @@ def main():
     args = parseArgs()
     if args.imagePath != 'None':
         mainSimpleImage(args)
-    elif args.folderPath != 'None':
-        mainMultipleImages(args)
+    #elif args.folderPath != 'None':
+    #    mainMultipleImages(args)
         
 
 if __name__ == "__main__":
