@@ -2,6 +2,8 @@ from tensorflow.keras.models import Model
 import tensorflow as tf 
 import numpy as np 
 import cv2
+import tensorflow.keras.preprocessing.image as I
+
 
 class GradCAM:
     def __init__(self, model, layer):
