@@ -6,9 +6,11 @@ import tensorflow.keras.preprocessing.image as I
 
 
 class GradCAM:
-    def __init__(self, model, layer):
+    def __init__(self, model, layer, img_height, img_width):
         self.model = model
         self.layer = layer
+        self.img_height = img_height
+        self.img_width = img_width
 
     def getLocalizationMap(self, image, c = 'None'):
         gradModel = Model(inputs = self.model.inputs, outputs = [self.model.get_layer(self.layer).output, self.model.output])
@@ -28,7 +30,7 @@ class GradCAM:
         return locMap, c, top_c
 
     def getHeatmap(self, locMap, image):
-        locMapResized = cv2.resize(locMap, (224, 224))
+        locMapResized = cv2.resize(locMap, (self.img_height, self.img_width))
         heatmap = locMapResized / np.max(locMapResized)
         colorMap = cv2.applyColorMap(np.uint8(heatmap*255), cv2.COLORMAP_JET)
         cm_rgb = cv2.cvtColor(colorMap, cv2.COLOR_BGR2RGB)
@@ -40,9 +42,9 @@ class GradCAM:
         return overLayed
     
     def evaluate(self, locMap, imagePath, c):
-        image = I.load_img(imagePath,target_size=(224,224))
+        image = I.load_img(imagePath,target_size=(self.img_height,self.img_width))
         image = I.img_to_array(image)
-        locMapResized = cv2.resize(locMap, (224, 224))
+        locMapResized = cv2.resize(locMap, (self.img_height,self.img_width))
         heatmap = locMapResized / np.max(locMapResized)
         _, thresh_img = cv2.threshold(np.uint8(heatmap*255), 30, 255, cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(thresh_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -50,9 +52,9 @@ class GradCAM:
         color = [1, 1, 1]
         cv2.fillPoly(black_img, contours, color)
         segmented_img = image*black_img
-        segmented_img = np.reshape(segmented_img,(1, 224,224,3))
+        segmented_img = np.reshape(segmented_img,(1, self.img_height, self.img_width, 3))
         segmented_img = preprocess_input(segmented_img)
-        original_img = np.reshape(image,(1, 224,224,3))
+        original_img = np.reshape(image,(1, self.img_height, self.img_width, 3))
         original_img = preprocess_input(original_img)
         Y = self.model(original_img)[0,c].numpy()
         O = self.model(segmented_img)[0,c].numpy()

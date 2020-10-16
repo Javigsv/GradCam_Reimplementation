@@ -5,8 +5,8 @@ import numpy as np
 
 
 class GradCAMPlusPlus(GradCAM):
-    def __init__(self, model, layer):
-        super().__init__(model, layer)
+    def __init__(self, model, layer, img_height, img_width):
+        super().__init__(model, layer, img_height, img_width)
 
     def getLocalizationMap(self, image, c = 'None'):
         gradModel = Model(inputs = self.model.inputs, outputs = [self.model.get_layer(self.layer).output, self.model.output])
