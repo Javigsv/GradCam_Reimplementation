@@ -5,8 +5,8 @@ import argparse
 import os
 import pickle
 import tensorflow as tf
-from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input, decode_predictions
-from tensorflow.keras.applications.resnet import ResNet50, preprocess_input, decode_predictions
+from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input 
+from tensorflow.keras.applications.resnet import ResNet50
 import tensorflow.keras.preprocessing.image as I
 
 from time import gmtime, asctime
@@ -14,13 +14,13 @@ from time import gmtime, asctime
 from GradCAM import GradCAM
 #from GradCAMPlusPlus import GradCAMPlusPlus
 
-def preProcessImage(imagePath):
-    image = I.load_img(imagePath, target_size=(224,224))
+
+def preProcessImage(imagePath, width, height):
+    image = I.load_img(imagePath, target_size=(height, width))
     image = I.img_to_array(image)
-    image = np.reshape(image,(1, 224, 224, 3))
+    image = np.reshape(image,(1, height, width, 3))
     image = preprocess_input(image)
     return image
-
 
 def parseArgs():
     parser = argparse.ArgumentParser(description='GradCAM')

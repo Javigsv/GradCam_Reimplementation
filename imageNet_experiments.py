@@ -8,16 +8,16 @@ import tensorflow as tf
 from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input 
 from tensorflow.keras.applications.resnet import ResNet50
 import tensorflow.keras.applications.resnet as resnet
-
+import tensorflow.keras.preprocessing.image as I
 from time import gmtime, asctime
 
-from gradCAM import GradCAM
+from GradCAM import GradCAM
 from GradCAMPlusPlus import GradCAMPlusPlus
 
-def preProcessImage(imagePath, model):
-    image = I.load_img(imagePath, target_size=(224,224))
+def preProcessImage(imagePath, model, input_height, input_width):
+    image = I.load_img(imagePath, target_size=(input_height, input_width))
     image = I.img_to_array(image)
-    image = np.reshape(image,(1, 224,224,3))
+    image = np.reshape(image,(1, input_height, input_width,3))
     if model == 'VGG16':
         image = preprocess_input(image)
     elif model == 'ResNet50':
@@ -27,16 +27,16 @@ def preProcessImage(imagePath, model):
 
 def parseArgs():
     parser = argparse.ArgumentParser(description='GradCAM')
-    parser.add_argument('--imagePath', default='None', type=str)
+    parser.add_argument('--imagePath', default='../dog.jpg', type=str)
     parser.add_argument('--model', default='VGG16', type=str)
     parser.add_argument('--imageClass', default='None', type=str)
     parser.add_argument('--folderPath', default='images/', type=str)
-    parser.add_argument('--resultsPath', default='None', type=str)
+    parser.add_argument('--resultsPath', default='../results/', type=str)
     parser.add_argument('--layer', default='last', type=str)
     return parser.parse_args()
 
 
-def mainMultipleImages(args):
+def mainMultipleImages(args, input_height, input_width):
 
     resultsFile = open('./eval/evaluation'+ asctime(gmtime()).replace(' ','_').replace(':','')+'.txt', 'a')
     if args.model == 'VGG16':
@@ -52,14 +52,14 @@ def mainMultipleImages(args):
         for layer in model.layers:
             if is_conv in layer.name:
                 print('Evaluating on layer: ' + layer.name)
-                gradCAM = GradCAM(model, layer.name)
+                gradCAM = GradCAM(model, layer.name, input_height, input_width)
                 t_drop = 0
                 t_inc = 0
                 n_im = 0
                 for root, _, files in os.walk(args.folderPath):
                     for name in files:
                         path = os.path.join(root, name)
-                        image = preProcessImage(path, args.model)
+                        image = preProcessImage(path, args.model, input_height, input_width)
                         locMap, c, _ = gradCAM.getLocalizationMap(image)
                         drop, inc = gradCAM.evaluate(locMap, path, c)
                         t_drop += drop
@@ -81,14 +81,14 @@ def mainMultipleImages(args):
         else:
             layer_name = args.layer
 
-        gradCAM = GradCAM(model, layer_name)
+        gradCAM = GradCAM(model, layer_name, input_height, input_width)
         t_drop = 0
         t_inc = 0
         n_im = 0
         for root, _, files in os.walk(args.folderPath):
             for name in files:
                 path = os.path.join(root, name)
-                image = preProcessImage(path, args.model)
+                image = preProcessImage(path, args.model, input_height, input_width)
                 locMap, c, _ = gradCAM.getLocalizationMap(image)
                 drop, inc = gradCAM.evaluate(locMap, path, c)
                 t_drop += drop
@@ -100,7 +100,7 @@ def mainMultipleImages(args):
         resultsFile.write(layer_name + '\t' + str(t_drop/n_im) +'\t' + str(t_inc/n_im) + '\n')
         resultsFile.close()
 
-def mainSimpleImage(args):
+def mainSimpleImage(args, input_height, input_width):
     if args.model == 'VGG16':
         model = VGG16(weights='imagenet')
         is_conv = 'conv'
@@ -117,9 +117,9 @@ def mainSimpleImage(args):
     if args.layer == 'all':
         for layer in model.layers:
             if is_conv in layer.name:
-                gradCAM = GradCAM(model, layer.name)
+                gradCAM = GradCAM(model, layer.name, input_height, input_width)
                 path = args.imagePath
-                image = preProcessImage(path, args.model)
+                image = preProcessImage(path, args.model, input_height, input_width)
                 c = classMap.get(args.imageClass, args.imageClass)
                 locMap, _, _ = gradCAM.getLocalizationMap(image, c)
                 if args.resultsPath != 'None':
@@ -137,11 +137,11 @@ def mainSimpleImage(args):
         else:
             layer_name = args.layer
 
-        gradCAM = GradCAM(model, layer_name)
+        gradCAM = GradCAM(model, layer_name, input_height, input_width)
         path = args.imagePath
-        image = preProcessImage(path, args.model)   
+        image = preProcessImage(path, args.model, input_height, input_width)   
         locMap, _, _ = gradCAM.getLocalizationMap(image, c)
-        gradCAMpp = GradCAMPlusPlus(model, layer_name)
+        gradCAMpp = GradCAMPlusPlus(model, layer_name, input_height, input_width)
         locMappp, _= gradCAMpp.getLocalizationMap(image, c)
 
         if args.resultsPath != 'None':
@@ -154,10 +154,12 @@ def mainSimpleImage(args):
 def main():
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
     args = parseArgs()
+    input_height = 224
+    input_width = 224
     if args.imagePath != 'None':
-        mainSimpleImage(args)
+        mainSimpleImage(args, input_height, input_width)
     elif args.folderPath != 'None':
-        mainMultipleImages(args)
+        mainMultipleImages(args, input_height, input_width)
         
 
 if __name__ == "__main__":
