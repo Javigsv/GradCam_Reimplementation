@@ -15,12 +15,7 @@ from GradCAM import GradCAM
 #from GradCAMPlusPlus import GradCAMPlusPlus
 
 
-def preProcessImage(imagePath, width, height):
-    image = I.load_img(imagePath, target_size=(height, width))
-    image = I.img_to_array(image)
-    image = np.reshape(image,(1, height, width, 3))
-    image = preprocess_input(image)
-    return image
+
 
 def parseArgs():
     parser = argparse.ArgumentParser(description='GradCAM')
