@@ -16,6 +16,10 @@ from GradCAMPlusPlus import GradCAMPlusPlus
 
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
 
 def parseArgs():
     parser = argparse.ArgumentParser(description='GradCAM')

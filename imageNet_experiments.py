@@ -29,11 +29,11 @@ def preProcessImage(imagePath, model, input_height, input_width):
 
 def parseArgs():
     parser = argparse.ArgumentParser(description='GradCAM')
-    parser.add_argument('--imagePath', default='../dog.jpg', type=str)
+    parser.add_argument('--imagePath', default='None', type=str)
     parser.add_argument('--model', default='VGG16', type=str)
     parser.add_argument('--imageClass', default='None', type=str)
     parser.add_argument('--folderPath', default='images/', type=str)
-    parser.add_argument('--resultsPath', default='../results/', type=str)
+    parser.add_argument('--resultsPath', default='None', type=str)
     parser.add_argument('--layer', default='last', type=str)
     return parser.parse_args()
 
