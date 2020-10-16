@@ -1,4 +1,4 @@
-from gradCAM import GradCAM
+from GradCAM import GradCAM
 from tensorflow.keras.models import Model
 import tensorflow as tf 
 import numpy as np 

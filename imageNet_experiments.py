@@ -12,7 +12,7 @@ import tensorflow.keras.preprocessing.image as I
 
 from time import gmtime, asctime
 
-from gradCAM import GradCAM
+from GradCAM import GradCAM
 from GradCAMPlusPlus import GradCAMPlusPlus
 
 def preProcessImage(imagePath, model, input_height, input_width):
