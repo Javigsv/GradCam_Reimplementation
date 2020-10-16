@@ -5,19 +5,23 @@ import argparse
 import os
 import pickle
 import tensorflow as tf
-from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input, decode_predictions
-from tensorflow.keras.applications.resnet import ResNet50, preprocess_input, decode_predictions
+from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input 
+from tensorflow.keras.applications.resnet import ResNet50
+import tensorflow.keras.applications.resnet as resnet
 
 from time import gmtime, asctime
 
-from GradCAM import GradCAM
+from gradCAM import GradCAM
 from GradCAMPlusPlus import GradCAMPlusPlus
 
-def preProcessImage(imagePath):
+def preProcessImage(imagePath, model):
     image = I.load_img(imagePath, target_size=(224,224))
     image = I.img_to_array(image)
     image = np.reshape(image,(1, 224,224,3))
-    image = preprocess_input(image)
+    if model == 'VGG16':
+        image = preprocess_input(image)
+    elif model == 'ResNet50':
+        image = resnet.preprocess_input(image)
     return image
 
 
@@ -55,7 +59,7 @@ def mainMultipleImages(args):
                 for root, _, files in os.walk(args.folderPath):
                     for name in files:
                         path = os.path.join(root, name)
-                        image = preProcessImage(path)
+                        image = preProcessImage(path, args.model)
                         locMap, c, _ = gradCAM.getLocalizationMap(image)
                         drop, inc = gradCAM.evaluate(locMap, path, c)
                         t_drop += drop
@@ -84,7 +88,7 @@ def mainMultipleImages(args):
         for root, _, files in os.walk(args.folderPath):
             for name in files:
                 path = os.path.join(root, name)
-                image = preProcessImage(path)
+                image = preProcessImage(path, args.model)
                 locMap, c, _ = gradCAM.getLocalizationMap(image)
                 drop, inc = gradCAM.evaluate(locMap, path, c)
                 t_drop += drop
@@ -115,7 +119,7 @@ def mainSimpleImage(args):
             if is_conv in layer.name:
                 gradCAM = GradCAM(model, layer.name)
                 path = args.imagePath
-                image = preProcessImage(path)
+                image = preProcessImage(path, args.model)
                 c = classMap.get(args.imageClass, args.imageClass)
                 locMap, _, _ = gradCAM.getLocalizationMap(image, c)
                 if args.resultsPath != 'None':
@@ -135,7 +139,7 @@ def mainSimpleImage(args):
 
         gradCAM = GradCAM(model, layer_name)
         path = args.imagePath
-        image = preProcessImage(path)   
+        image = preProcessImage(path, args.model)   
         locMap, _, _ = gradCAM.getLocalizationMap(image, c)
         gradCAMpp = GradCAMPlusPlus(model, layer_name)
         locMappp, _= gradCAMpp.getLocalizationMap(image, c)
