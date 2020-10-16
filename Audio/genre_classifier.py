@@ -28,20 +28,8 @@ def genre_number(i):
     """
     if i == 'Hip-Hop':
         return 0
-    elif i == 'Pop':
-        return 1
     elif i == 'Folk':
-        return 2
-    elif i == 'Rock':
-        return 3
-    elif i == 'Experimental':
-        return 4
-    elif i == 'International':
-        return 5
-    elif i == 'Electronic':
-        return 6
-    else:
-        return '7' #instrumental
+        return 1
 
 
 def load_reference_table(file_name = 'music_analysis.csv', root_folder = "songsWithTags_wav"):
@@ -52,6 +40,7 @@ def load_reference_table(file_name = 'music_analysis.csv', root_folder = "songsW
     ref_table['file_name'] = ref_table['file_name'].apply(lambda x: '{0:0>6}'.format(x))
     ref_table['genre_number'] = ref_table['genre'].apply(genre_number)
     ref_table['path'] = root_folder + "/" + ref_table['file_name'].astype('str') + ".wav"
+    ref_table.index = ref_table['path']
     return ref_table 
 
 
@@ -73,33 +62,45 @@ def get_augment_pitch_shift_spect(y, sr, n_steps):
     return y_augmented_spect
 
 
-def generate_dataset(ref_table, data_augmentation=False):
+def generate_dataset(ref_table, data_augmentation = False, root_folder = "songsWithTags_wav"):
     """
     The dataset consists on the spectrograms of the original signal and also of four different
     augmentations (2 time strechi g and 2 pitch shifting)
     """
     dataset = []
-    for song in ref_table.itertuples():
-        audio_signal, sr = librosa.load(song.path)  
+    for song_name in os.listdir(root_folder):
+        song_file = os.path.join(root_folder, song_name)
+        if song_file.endswith(".wav"):
+          genre_number = ref_table.loc[song_file, "genre_number"]
+          audio_signal, sr = librosa.load(song_file, duration=10)  
 
-        spectrogram = librosa.feature.melspectrogram(audio_signal, sr, n_mels=128)
-        dataset.append((spectrogram, song.genre_number))
+          spectrogram = librosa.feature.melspectrogram(audio_signal, sr, n_mels=128)
+          dataset.append((spectrogram, genre_number))
         
-        if data_augmentation:
-            spect_augment_1 = get_augment_time_strech_spect(audio_signal, sr, rate = 0.8)
-            dataset.append((spect_augment_1, song.genre_number))
+          if data_augmentation:
+              spect_augment_1 = get_augment_time_strech_spect(audio_signal, sr, rate = 0.8)
+              dataset.append((spect_augment_1, genre_number))
 
-            spect_augment_2 = get_augment_time_strech_spect(audio_signal, sr, rate = 0.9)
-            dataset.append((spect_augment_2, song.genre_number))
+              spect_augment_2 = get_augment_time_strech_spect(audio_signal, sr, rate = 0.9)
+              dataset.append((spect_augment_2, genre_number))
 
-            spect_augment_3 = get_augment_pitch_shift_spect(audio_signal, sr, n_steps = 2)
-            dataset.append((spect_augment_3, song.genre_number))
-            
-            spect_augment_4 = get_augment_pitch_shift_spect(audio_signal, sr, n_steps = -2)
-            dataset.append((spect_augment_4, song.genre_number))
+              spect_augment_3 = get_augment_pitch_shift_spect(audio_signal, sr, n_steps = 2)
+              dataset.append((spect_augment_3, genre_number))
+              
+              spect_augment_4 = get_augment_pitch_shift_spect(audio_signal, sr, n_steps = -2)
+              dataset.append((spect_augment_4, genre_number))
         
     return dataset
 
+def clean_dataset(dataset):
+    """
+    We will keep just the spectrograms with at least 431 features 
+    """
+    dataset_cleaned = []
+    for i in range(len(dataset)):
+        if dataset[i][0].shape[1]>=431: # and math.isnan(dataset[i][1])==False:
+            dataset_cleaned.append(dataset[i])
+    return dataset_cleaned
 
 def split_dataset(dataset):
     """
@@ -110,26 +111,26 @@ def split_dataset(dataset):
 
     #train val test split 8:1:1
     N_samples = len(dataset)
-    N_samples_train = N_samples*0.8
-    N_samples_val = N_samples*0.1
+    N_samples_train = round(N_samples*0.8)
+    N_samples_val = round(N_samples*0.1)
     
-    train = dataset[:round(N_samples_train)]
-    val = dataset[N_samples_train:round(N_samples_train + N_samples_val)]
-    test = dataset[round(N_samples_val + N_samples_train):]
+    train = dataset[:N_samples_train]
+    val = dataset[N_samples_train:N_samples_train + N_samples_val]
+    test = dataset[N_samples_val + N_samples_train:]
 
     X_train, Y_train = zip(*train)
     X_val, Y_val = zip(*val)
     X_test, Y_test = zip(*test)
 
     # Reshape for CNN input
-    X_train = np.array([x.reshape((128, 431, 1)) for x in X_train])
-    X_val = np.array([x.reshape((128, 431, 1)) for x in X_val])
-    X_test = np.array([x.reshape((128, 431, 1)) for x in X_test])
+    X_train = np.array([x[:,:431].reshape((128, 431, 1)) for x in X_train])
+    X_val = np.array([x[:,:431].reshape((128, 431, 1)) for x in X_val])
+    X_test = np.array([x[:,:431].reshape((128, 431, 1)) for x in X_test])
 
     # One-Hot encoding for classes
-    Y_train = np.array(keras.utils.to_categorical(Y_train, 8))
-    Y_val = np.array(keras.utils.to_categorical(Y_val, 8))
-    Y_test = np.array(keras.utils.to_categorical(Y_test, 8))
+    Y_train = np.array(keras.utils.to_categorical(Y_train, 2))
+    Y_val = np.array(keras.utils.to_categorical(Y_val, 2))
+    Y_test = np.array(keras.utils.to_categorical(Y_test, 2))
 
     return (X_train, Y_train), (X_val, Y_val), (X_test, Y_test)
 
@@ -160,7 +161,7 @@ def create_CNN():
     model.add(Activation('relu'))
     model.add(Dropout(rate=0.5))
 
-    model.add(Dense(8))
+    model.add(Dense(2))
     model.add(Activation('softmax'))
 
     return model
@@ -171,17 +172,20 @@ def plot_acc_loss(hist, file_name="acc_loss.png"):
     plt.figure(figsize=(12,8))
     plt.plot(hist.history['loss'])
     plt.plot(hist.history['val_loss'])
-    plt.plot(hist.history['acc'])
-    plt.plot(hist.history['val_acc'])
-    plt.legend(['loss','val_loss', 'acc','val_acc'])
+    plt.plot(hist.history['accuracy'])
+    plt.plot(hist.history['val_accuracy'])
+    plt.legend(['loss','val_loss', 'accuracy','val_accuracy'])
     plt.savefig(file_name)
+
 
     
 
-def main(saved_model_file = 'music_genre_classification.h5'):
+def main(saved_model_file = 'model_songsWithTags_20000.h5'):
     ref_table = load_reference_table()
-    dataset = generate_dataset(ref_table)
-    (X_train, Y_train), (X_val, Y_val), (X_test, Y_test) = split_dataset(dataset)
+    dataset = generate_dataset(ref_table, data_augmentation=False)
+    dataset_cleaned = clean_dataset(dataset)
+    (X_train, Y_train), (X_val, Y_val), (X_test, Y_test) = split_dataset(dataset_cleaned)
+
     model = create_CNN()
 
     epochs = 100
@@ -189,7 +193,7 @@ def main(saved_model_file = 'music_genre_classification.h5'):
     model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=['accuracy'])
 
     early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=2)
-    hist = model.fit(x=X_train, y=Y_train, epochs=epochs, batch_size=batch_size, validation_data= (X_val, Y_val), callbacks=[early_stopping, tb_hist]) 
+    hist = model.fit(x=X_train, y=Y_train, epochs=epochs, batch_size=batch_size, validation_data= (X_val, Y_val), callbacks=[early_stopping]) 
 
     plot_acc_loss(hist)
     
