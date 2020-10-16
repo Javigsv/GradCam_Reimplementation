@@ -12,15 +12,10 @@ import tensorflow.keras.preprocessing.image as I
 from time import gmtime, asctime
 
 from GradCAM import GradCAM
-#from GradCAMPlusPlus import GradCAMPlusPlus
+from GradCAMPlusPlus import GradCAMPlusPlus
 
 
-def preProcessImage(imagePath, width, height):
-    image = I.load_img(imagePath, target_size=(height, width))
-    image = I.img_to_array(image)
-    image = np.reshape(image,(1, height, width, 3))
-    image = preprocess_input(image)
-    return image
+
 
 def parseArgs():
     parser = argparse.ArgumentParser(description='GradCAM')
@@ -94,7 +89,7 @@ def mainMultipleImages(args):
         resultsFile.close()
 """
 
-def mainSimpleImage(args):
+def mainSimpleImage(args, input_height, input_width):
     model = tf.keras.models.load_model(args.modelPath)
     is_conv = 'conv'
         
@@ -107,7 +102,7 @@ def mainSimpleImage(args):
     if args.layer == 'all':
         for layer in model.layers:
             if is_conv in layer.name:
-                gradCAM = GradCAM(model, layer.name)
+                gradCAM = GradCAM(model, layer.name, input_height, input_width)
                 path = args.imagePath
                 image = preProcessImage(path, )
                 c = classMap.get(args.imageClass, args.imageClass)
@@ -127,11 +122,11 @@ def mainSimpleImage(args):
         else:
             layer_name = args.layer
 
-        gradCAM = GradCAM(model, layer_name)
+        gradCAM = GradCAM(model, layer_name, input_height, input_width)
         path = args.imagePath
         image = preProcessImage(path)   
         locMap, _, _ = gradCAM.getLocalizationMap(image, c)
-        #gradCAMpp = GradCAMPlusPlus(model, layer_name)
+        #gradCAMpp = GradCAMPlusPlus(model, layer_name, input_height, input_width)
         #locMappp, _= gradCAMpp.getLocalizationMap(image, c)
 
         if args.resultsPath != 'None':
@@ -142,10 +137,12 @@ def mainSimpleImage(args):
 
 
 def main():
+    input_width = 431
+    input_height = 228
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
     args = parseArgs()
     if args.imagePath != 'None':
-        mainSimpleImage(args)
+        mainSimpleImage(args, input_height, input_width)
     #elif args.folderPath != 'None':
     #    mainMultipleImages(args)
         
