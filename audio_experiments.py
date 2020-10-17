@@ -8,7 +8,7 @@ import tensorflow as tf
 from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input 
 from tensorflow.keras.applications.resnet import ResNet50
 import tensorflow.keras.preprocessing.image as I
-
+import random
 from time import gmtime, asctime
 
 from GradCAM import GradCAM
@@ -16,19 +16,15 @@ from GradCAMPlusPlus import GradCAMPlusPlus
 
 
 
-<<<<<<< HEAD
-=======
 
->>>>>>> main
 
 def parseArgs():
     parser = argparse.ArgumentParser(description='GradCAM')
-    parser.add_argument('--imagePath', default='None', type=str)
+    parser.add_argument('--oneSpectrogram', default=True, type=bool)
     parser.add_argument('--modelPath', default='model/model_songsWithTags_20000.h5', type=str)
-    parser.add_argument('--imageClass', default='None', type=str)
-    parser.add_argument('--folderPath', default='images/', type=str)
     parser.add_argument('--resultsPath', default='None', type=str)
     parser.add_argument('--layer', default='last', type=str)
+    parser.add_argument('--genre', default='Hip-Hop', type=str)
     return parser.parse_args()
 
 """
@@ -93,28 +89,30 @@ def mainMultipleImages(args):
         resultsFile.close()
 """
 
-def mainSimpleImage(args, input_height, input_width):
+def mainOneSpectrogram(args, input_height, input_width, input_spectrograms_file = 'audio/input_spectrograms.pickle'):
     model = tf.keras.models.load_model(args.modelPath)
     is_conv = 'conv'
-        
-    classMap = pickle.load(open('classMap.p', 'rb'))
+    
+    dataset = pickle.load(open(input_spectrograms_file, 'rb'))
+    
+    random.shuffle(dataset)  
     
     c = None
-    if args.imageClass != 'None':
-        c = classMap[args.imageClass]
-
+    
+    image = None
+    idx = 0
+    while image == None:
+        if dataset[idx][1] == args.genre:
+            image = dataset[idx][0]
+    
     if args.layer == 'all':
         for layer in model.layers:
             if is_conv in layer.name:
                 gradCAM = GradCAM(model, layer.name, input_height, input_width)
-                path = args.imagePath
-                image = preProcessImage(path, )
-                c = classMap.get(args.imageClass, args.imageClass)
-                locMap, _, _ = gradCAM.getLocalizationMap(image, c)
+                locMap, _, _ = gradCAM.getLocalizationMap(image)
                 if args.resultsPath != 'None':
                     heatMap = gradCAM.getHeatmap(locMap, image)
-                    name = os.path.split(path)[-1]
-                    plt.imsave(args.resultsPath + layer.name + '_' + str(c) + '_' + name, np.uint8(heatMap))
+                    plt.imsave(args.resultsPath + layer.name + args.genre, np.uint8(heatMap))
     else:
         if args.layer == "last":
             conv_layers = []
@@ -145,8 +143,10 @@ def main():
     input_height = 228
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
     args = parseArgs()
-    if args.imagePath != 'None':
-        mainSimpleImage(args, input_height, input_width)
+    if args.oneSpectrogram:
+        mainOneSpectrogram(args, input_height, input_width)
+    else:
+        mainAllSpectrograms()
     #elif args.folderPath != 'None':
     #    mainMultipleImages(args)
         
