@@ -8,7 +8,7 @@ from keras.optimizers import SGD
 import keras.backend as K
 from keras.models import load_model
 from keras.callbacks import EarlyStopping
-
+import pickle
 import matplotlib.pyplot as plt
 import librosa
 import librosa.display
@@ -178,12 +178,17 @@ def plot_acc_loss(hist, file_name="acc_loss.png"):
     plt.savefig(file_name)
 
 
-    
+def save_dataset(dataset, file_name = "input_spectrograms_2000.pickle"):
+    with open(file_name, 'wb') as output:
+        pickle.dump(dataset, output)
 
-def main(saved_model_file = 'model_songsWithTags_20000.h5'):
+def main(saved_model_file = 'model_songsWithTags_2000.h5'):
     ref_table = load_reference_table()
     dataset = generate_dataset(ref_table, data_augmentation=False)
     dataset_cleaned = clean_dataset(dataset)
+    
+    save_dataset(dataset_cleaned)   
+
     (X_train, Y_train), (X_val, Y_val), (X_test, Y_test) = split_dataset(dataset_cleaned)
 
     model = create_CNN()

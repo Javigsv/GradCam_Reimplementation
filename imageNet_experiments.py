@@ -19,7 +19,6 @@ def preProcessImage(imagePath, model, input_height, input_width):
     image = I.load_img(imagePath, target_size=(input_height, input_width))
     image = I.img_to_array(image)
     image = np.reshape(image,(1, input_height, input_width,3))
-
     if model == 'VGG16':
         image = preprocess_input(image)
     elif model == 'ResNet50':
@@ -114,6 +113,7 @@ def mainSimpleImage(args, input_height, input_width):
     classMap = pickle.load(open('classMap.p', 'rb'))
     
     c = None
+
     if args.imageClass != 'None':
         c = classMap[args.imageClass]
 
@@ -170,3 +170,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

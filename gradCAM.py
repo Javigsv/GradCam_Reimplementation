@@ -12,7 +12,7 @@ class GradCAM:
         self.img_height = img_height
         self.img_width = img_width
 
-    def getLocalizationMap(self, image, c = 'None'):
+    def getLocalizationMap(self, image, c = None):
         gradModel = Model(inputs = self.model.inputs, outputs = [self.model.get_layer(self.layer).output, self.model.output])
         with tf.GradientTape() as t:
             (featureMaps, predictions) = gradModel(image)
