@@ -13,6 +13,7 @@ import tensorflow.keras.preprocessing.image as I
 from time import gmtime, asctime
 
 from GradCAM import GradCAM
+
 from GradCAMPlusPlus import GradCAMPlusPlus
 
 def preProcessImage(imagePath, model, input_height, input_width):
@@ -34,6 +35,8 @@ def parseArgs():
     parser.add_argument('--folderPath', default='images/', type=str)
     parser.add_argument('--resultsPath', default='None', type=str)
     parser.add_argument('--layer', default='last', type=str)
+    parser.add_argument('--gradCAM', default=True, type=bool)
+    parser.add_argument('--gradCAMpp', default=False, type=bool)
     return parser.parse_args()
 
 
@@ -61,7 +64,6 @@ def mainMultipleImages(args, input_height, input_width):
                     for name in files:
                         path = os.path.join(root, name)
                         image = preProcessImage(path, args.model, input_height, input_width)
-
                         locMap, c, _ = gradCAM.getLocalizationMap(image)
                         drop, inc = gradCAM.evaluate(locMap, path, c)
                         t_drop += drop
@@ -102,6 +104,7 @@ def mainMultipleImages(args, input_height, input_width):
         resultsFile.write(layer_name + '\t' + str(t_drop/n_im) +'\t' + str(t_inc/n_im) + '\n')
         resultsFile.close()
 
+
 def mainSimpleImage(args, input_height, input_width):
     if args.model == 'VGG16':
         model = VGG16(weights='imagenet')
@@ -120,16 +123,27 @@ def mainSimpleImage(args, input_height, input_width):
     if args.layer == 'all':
         for layer in model.layers:
             if is_conv in layer.name:
-                gradCAM = GradCAM(model, layer.name, input_height, input_width)
                 path = args.imagePath
-
                 image = preProcessImage(path, args.model, input_height, input_width)
                 c = classMap.get(args.imageClass, args.imageClass)
-                locMap, _, _ = gradCAM.getLocalizationMap(image, c)
+                
+                if args.gradCAM:
+                    gradCAM = GradCAM(model, layer.name, input_height, input_width)
+                    locMap, _, _ = gradCAM.getLocalizationMap(image, c)
+                
+                if args.gradCAMpp:
+                    gradCAM_pp = GradCAMPlusPlus(model, layer.name, input_height, input_width)
+                    locMap_pp, _ = gradCAM_pp.getLocalizationMap(image, c)
+                
                 if args.resultsPath != 'None':
-                    heatMap = gradCAM.getHeatmap(locMap, image)
                     name = os.path.split(path)[-1]
-                    plt.imsave(args.resultsPath + layer.name + '_' + str(c) + '_' + name, np.uint8(heatMap))
+                    if args.gradCAM:
+                        heatMap = gradCAM.getHeatmap(locMap, image)
+                        plt.imsave(args.resultsPath + layer.name + '_' + str(c) + '_' + name, np.uint8(heatMap))
+                    
+                    if args.gradCAMpp:
+                        heatMap_pp = gradCAM_pp.getHeatmap(locMap_pp, image)
+                        plt.imsave(args.resultsPath + layer.name + '_++_' + str(c) + name, np.uint8(heatMap_pp))
     else:
         if args.layer == "last":
             conv_layers = []
@@ -140,21 +154,26 @@ def mainSimpleImage(args, input_height, input_width):
             layer_name = conv_layers[-1]
         else:
             layer_name = args.layer
-
-        gradCAM = GradCAM(model, layer_name, input_height, input_width)
+        
         path = args.imagePath
-
         image = preProcessImage(path, args.model, input_height, input_width)   
-
-        locMap, _, _ = gradCAM.getLocalizationMap(image, c)
-        gradCAMpp = GradCAMPlusPlus(model, layer_name, input_height, input_width)
-        locMappp, _= gradCAMpp.getLocalizationMap(image, c)
+        
+        if args.gradCAM:
+            gradCAM = GradCAM(model, layer_name, input_height, input_width)    
+            locMap, _, _ = gradCAM.getLocalizationMap(image, c)
+            
+        if args.gradCAMpp:
+            gradCAM_pp = GradCAMPlusPlus(model, layer_name, input_height, input_width)
+            locMap_pp, _ = gradCAM_pp.getLocalizationMap(image, c)
 
         if args.resultsPath != 'None':
-            heatMap = gradCAM.getHeatmap(locMap, image)
-            name = os.path.split(path)[-1]
-            plt.imsave(args.resultsPath + layer_name + '_' + str(c) + name, np.uint8(heatMap))
-            plt.imsave(args.resultsPath + layer_name + '_++' + str(c) + name, np.uint8(gradCAMpp.getHeatmap(locMappp, image)))
+            name = os.path.split(path)[-1] 
+            if args.gradCAM:
+                heatMap = gradCAM.getHeatmap(locMap, image)
+                plt.imsave(args.resultsPath + layer_name + '_' + str(c) + name, np.uint8(heatMap))
+            if args.gradCAMpp:
+                heatMap_pp = gradCAM_pp.getHeatmap(locMap_pp, image)
+                plt.imsave(args.resultsPath + layer_name + '_++_' + str(c) + name, np.uint8(heatMap_pp))
 
 
 def main():

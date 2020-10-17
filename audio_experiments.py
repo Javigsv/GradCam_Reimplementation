@@ -16,19 +16,18 @@ from GradCAMPlusPlus import GradCAMPlusPlus
 
 
 
-
-
 def parseArgs():
-    parser = argparse.ArgumentParser(description='GradCAM')
+    parser = argparse.ArgumentParser(description='audioExperiments')
     parser.add_argument('--oneSpectrogram', default=True, type=bool)
     parser.add_argument('--modelPath', default='model/model_songsWithTags_20000.h5', type=str)
     parser.add_argument('--resultsPath', default='None', type=str)
     parser.add_argument('--layer', default='last', type=str)
     parser.add_argument('--genre', default='Hip-Hop', type=str)
+    parser.add_argument('--gradCAM++', default=False, type=bool)
     return parser.parse_args()
 
 """
-def mainMultipleImages(args):
+def mainAllSpectrograms(args, dataset):
 
     resultsFile = open('./eval/evaluation'+ asctime(gmtime()).replace(' ','_').replace(':','')+'.txt', 'a')
     model = tf.keras.models.load_model(args.modelPath)
@@ -89,16 +88,14 @@ def mainMultipleImages(args):
         resultsFile.close()
 """
 
-def mainOneSpectrogram(args, input_height, input_width, input_spectrograms_file = 'audio/input_spectrograms.pickle'):
-    model = tf.keras.models.load_model(args.modelPath)
-    is_conv = 'conv'
+def mainOneSpectrogram(args, dataset, is_conv = 'conv'):
     
-    dataset = pickle.load(open(input_spectrograms_file, 'rb'))
+    model = tf.keras.models.load_model(args.modelPath)
+
+    input_height, input_width = dataset[0][0].shape()
     
     random.shuffle(dataset)  
-    
-    c = None
-    
+
     image = None
     idx = 0
     while image == None:
@@ -125,30 +122,29 @@ def mainOneSpectrogram(args, input_height, input_width, input_spectrograms_file 
             layer_name = args.layer
 
         gradCAM = GradCAM(model, layer_name, input_height, input_width)
-        path = args.imagePath
-        image = preProcessImage(path)   
-        locMap, _, _ = gradCAM.getLocalizationMap(image, c)
-        #gradCAMpp = GradCAMPlusPlus(model, layer_name, input_height, input_width)
-        #locMappp, _= gradCAMpp.getLocalizationMap(image, c)
+  
+        locMap, _, _ = gradCAM.getLocalizationMap(image)
+        gradCAMpp = GradCAMPlusPlus(model, layer_name, input_height, input_width)
+        locMappp, _= gradCAMpp.getLocalizationMap(image)
 
         if args.resultsPath != 'None':
             heatMap = gradCAM.getHeatmap(locMap, image)
-            name = os.path.split(path)[-1]
-            plt.imsave(args.resultsPath + layer_name + '_' + str(c) + name, np.uint8(heatMap))
-            #plt.imsave(args.resultsPath + layer_name + '_++' + str(c) + name, np.uint8(gradCAMpp.getHeatmap(locMappp, image)))
+            plt.imsave(args.resultsPath + layer_name + '_' + args.genre, np.uint8(heatMap))
+            plt.imsave(args.resultsPath + layer_name + '_++_' + args.genre, np.uint8(gradCAMpp.getHeatmap(locMappp, image)))
 
 
-def main():
-    input_width = 431
-    input_height = 228
+def main(input_spectrograms_file = 'audio/input_spectrograms.pickle'):
+
+    dataset = pickle.load(open(input_spectrograms_file, 'rb'))
+
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
     args = parseArgs()
+
     if args.oneSpectrogram:
-        mainOneSpectrogram(args, input_height, input_width)
+        mainOneSpectrogram(args, dataset)
     else:
-        mainAllSpectrograms()
-    #elif args.folderPath != 'None':
-    #    mainMultipleImages(args)
+        mainAllSpectrograms(args, dataset)
+
         
 
 if __name__ == "__main__":
