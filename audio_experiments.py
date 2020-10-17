@@ -159,6 +159,7 @@ def main(input_spectrograms_file = 'audio/input_spectrograms.pickle'):
         mainOneSpectrogram(args, dataset)
     else:
         # mainAllSpectrograms(args, dataset)
+        pass
 
         
 
