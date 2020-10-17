@@ -23,15 +23,16 @@ def parseArgs():
     parser.add_argument('--resultsPath', default='None', type=str)
     parser.add_argument('--layer', default='last', type=str)
     parser.add_argument('--genre', default='Hip-Hop', type=str)
-    parser.add_argument('--gradCAM++', default=False, type=bool)
+    parser.add_argument('--gradCAM', default=True, type=bool)
+    parser.add_argument('--gradCAMpp', default=False, type=bool)
     return parser.parse_args()
 
 """
-def mainAllSpectrograms(args, dataset):
+def mainAllSpectrograms(args, dataset, is_conv = 'conv'):
 
     resultsFile = open('./eval/evaluation'+ asctime(gmtime()).replace(' ','_').replace(':','')+'.txt', 'a')
     model = tf.keras.models.load_model(args.modelPath)
-    is_conv = 'conv'
+    
     
     #resultsFile.write(args.model + '\n')
 
@@ -89,7 +90,7 @@ def mainAllSpectrograms(args, dataset):
 """
 
 def mainOneSpectrogram(args, dataset, is_conv = 'conv'):
-    
+
     model = tf.keras.models.load_model(args.modelPath)
 
     input_height, input_width = dataset[0][0].shape()
@@ -97,19 +98,29 @@ def mainOneSpectrogram(args, dataset, is_conv = 'conv'):
     random.shuffle(dataset)  
 
     image = None
-    idx = 0
+    sample_idx = 0
     while image == None:
-        if dataset[idx][1] == args.genre:
-            image = dataset[idx][0]
+        if dataset[sample_idx][1] == args.genre:
+            image = dataset[sample_idx][0]
     
     if args.layer == 'all':
         for layer in model.layers:
             if is_conv in layer.name:
-                gradCAM = GradCAM(model, layer.name, input_height, input_width)
-                locMap, _, _ = gradCAM.getLocalizationMap(image)
+                if args.gradCAM:
+                    gradCAM = GradCAM(model, layer.name, input_height, input_width)
+                    locMap, _, _ = gradCAM.getLocalizationMap(image)
+                if args.gradCAMpp:
+                    gradCAM_pp = GradCAMPlusPlus(model, layer.name, input_height, input_width)
+                    locMap_pp, _= gradCAM_pp.getLocalizationMap(image)
+                
                 if args.resultsPath != 'None':
-                    heatMap = gradCAM.getHeatmap(locMap, image)
-                    plt.imsave(args.resultsPath + layer.name + args.genre, np.uint8(heatMap))
+                    if args.gradCAM:
+                        heatMap = gradCAM.getHeatmap(locMap, image)
+                        plt.imsave(args.resultsPath + layer.name + '_' + args.genre, np.uint8(heatMap))
+                    if args.gradCAMpp:
+                        heatMap_pp = gradCAM_pp.getHeatmap(locMap_pp, image)
+                        plt.imsave(args.resultsPath + layer.name + '_++_' + args.genre, np.uint8(heatMap_pp))
+
     else:
         if args.layer == "last":
             conv_layers = []
@@ -121,16 +132,20 @@ def mainOneSpectrogram(args, dataset, is_conv = 'conv'):
         else:
             layer_name = args.layer
 
-        gradCAM = GradCAM(model, layer_name, input_height, input_width)
-  
-        locMap, _, _ = gradCAM.getLocalizationMap(image)
-        gradCAMpp = GradCAMPlusPlus(model, layer_name, input_height, input_width)
-        locMappp, _= gradCAMpp.getLocalizationMap(image)
+        if args.gradCAM:
+            gradCAM = GradCAM(model, layer_name, input_height, input_width)
+            locMap, _, _ = gradCAM.getLocalizationMap(image)
+        if args.gradCAMpp:
+            gradCAM_pp = GradCAMPlusPlus(model, layer_name, input_height, input_width)
+            locMap_pp, _= gradCAM_pp.getLocalizationMap(image)
 
         if args.resultsPath != 'None':
-            heatMap = gradCAM.getHeatmap(locMap, image)
-            plt.imsave(args.resultsPath + layer_name + '_' + args.genre, np.uint8(heatMap))
-            plt.imsave(args.resultsPath + layer_name + '_++_' + args.genre, np.uint8(gradCAMpp.getHeatmap(locMappp, image)))
+            if args.gradCAM:
+                heatMap = gradCAM.getHeatmap(locMap, image)
+                plt.imsave(args.resultsPath + layer_name + '_' + args.genre, np.uint8(heatMap))
+            if args.gradCAMpp:
+                heatMap_pp = gradCAM_pp.getHeatmap(locMap_pp, image)
+                plt.imsave(args.resultsPath + layer_name + '_++_' + args.genre, np.uint8(heatMap_pp))
 
 
 def main(input_spectrograms_file = 'audio/input_spectrograms.pickle'):
@@ -143,7 +158,7 @@ def main(input_spectrograms_file = 'audio/input_spectrograms.pickle'):
     if args.oneSpectrogram:
         mainOneSpectrogram(args, dataset)
     else:
-        mainAllSpectrograms(args, dataset)
+        # mainAllSpectrograms(args, dataset)
 
         
 
