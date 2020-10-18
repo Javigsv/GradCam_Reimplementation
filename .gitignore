@@ -2,3 +2,4 @@ images/*
 .DS_Store
 __pycache__/
 genreClassifier/input_spectrograms_2000.pickle
+venv/

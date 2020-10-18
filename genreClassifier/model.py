@@ -1,13 +1,13 @@
 import tensorflow as tf
-import keras
-from keras import layers
-from keras.layers import Activation, Dense, Dropout, Conv1D, Conv2D, Flatten, BatchNormalization, ZeroPadding2D, MaxPooling2D, GlobalMaxPooling2D, GlobalAveragePooling1D, AveragePooling2D, Input, Add
-from keras.models import Sequential
-from keras import regularizers
-from keras.optimizers import SGD
-import keras.backend as K
-from keras.models import load_model
-from keras.callbacks import EarlyStopping
+from tensorflow.keras import layers
+from tensorflow.keras.layers import Activation, Dense, Dropout, Conv1D, Conv2D, Flatten, BatchNormalization, ZeroPadding2D, MaxPooling2D, GlobalMaxPooling2D, GlobalAveragePooling1D, AveragePooling2D, Input, Add
+from tensorflow.keras.models import Sequential
+from tensorflow.keras import regularizers
+from tensorflow.keras.optimizers import SGD
+import tensorflow.keras.backend as K
+from tensorflow.keras.models import load_model
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.utils import to_categorical
 import pickle
 import matplotlib.pyplot as plt
 import librosa
@@ -128,9 +128,9 @@ def split_dataset(dataset):
     X_test = np.array([x[:,:431].reshape((128, 431, 1)) for x in X_test])
 
     # One-Hot encoding for classes
-    Y_train = np.array(keras.utils.to_categorical(Y_train, 2))
-    Y_val = np.array(keras.utils.to_categorical(Y_val, 2))
-    Y_test = np.array(keras.utils.to_categorical(Y_test, 2))
+    Y_train = np.array(to_categorical(Y_train, 2))
+    Y_val = np.array(to_categorical(Y_val, 2))
+    Y_test = np.array(to_categorical(Y_test, 2))
 
     return (X_train, Y_train), (X_val, Y_val), (X_test, Y_test)
 

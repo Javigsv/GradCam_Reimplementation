@@ -30,7 +30,7 @@ class GradCAM:
         return locMap, c, top_c
 
     def getHeatmap(self, locMap, image):
-        locMapResized = cv2.resize(locMap, (self.img_height, self.img_width))
+        locMapResized = cv2.resize(locMap, (self.img_width, self.img_height))
         heatmap = locMapResized / np.max(locMapResized)
         colorMap = cv2.applyColorMap(np.uint8(heatmap*255), cv2.COLORMAP_JET)
         cm_rgb = cv2.cvtColor(colorMap, cv2.COLOR_BGR2RGB)
