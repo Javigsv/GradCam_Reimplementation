@@ -42,7 +42,6 @@ def mainAllSpectrograms(args, dataset, is_conv = 'conv'):
 
 
 def mainOneSpectrogram(args, dataset, is_conv = 'conv'):
-
     model = tf.keras.models.load_model(args.modelPath)
     
     input_height, input_width = dataset[0][0].shape
@@ -55,6 +54,7 @@ def mainOneSpectrogram(args, dataset, is_conv = 'conv'):
     while len(image) == 0:
         if dataset[sample_idx][1] == args_genre_number:
             image = dataset[sample_idx][0]
+        sample_idx += 1
     
     image = np.reshape(image, (1, input_height, input_width, 1))
     

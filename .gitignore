@@ -3,3 +3,5 @@ images/*
 __pycache__/
 genreClassifier/input_spectrograms_2000.pickle
 venv/
+.idea/
+
