@@ -48,12 +48,12 @@ class GradCAM:
         overLayed = 255 * overLayed / np.max(overLayed)
         return overLayed
     
-    def evaluate(self, locMap, imagePath, c):
+    def evaluate(self, locMap, imagePath, c, tolerance):
         image = I.load_img(imagePath,target_size=(224,224))
         image = I.img_to_array(image)
         locMapResized = cv2.resize(locMap, (224, 224))
         heatmap = locMapResized / np.max(locMapResized)
-        _, thresh_img = cv2.threshold(np.uint8(heatmap*255), 30, 255, cv2.THRESH_BINARY)
+        _, thresh_img = cv2.threshold(np.uint8(heatmap*255), tolerance, 255, cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(thresh_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         black_img = np.zeros(image.shape).astype(image.dtype)
         color = [1, 1, 1]
@@ -94,6 +94,7 @@ def parseArgs():
     parser.add_argument('--folderPath', default='images/', type=str)
     parser.add_argument('--resultsPath', default='None', type=str)
     parser.add_argument('--layer', default='block5_conv3', type=str)
+    parser.add_argument('--tolerance', default=30, type=int)
 
     return parser.parse_args()
 
@@ -122,7 +123,7 @@ def mainMultipleImages(args):
                 
                 classificationFile.write(path + ' ---> ' + labelsMap[c] + '\n')
 
-                drop, inc = gradCAM.evaluate(locMap, path, c)
+                drop, inc = gradCAM.evaluate(locMap, path, c, args.tolerance)
                 t_drop += drop
                 t_inc += inc
                 n_im += 1
