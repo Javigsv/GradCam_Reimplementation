@@ -5,3 +5,4 @@ classRelation.txt
 evaluation.txt
 labels_json.json
 *.pyc
+*.jpg

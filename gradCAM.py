@@ -28,13 +28,11 @@ class GradCAM:
             c = int(c)
             score = predictions[:,c]
         
-        top_c = np.flip(np.array(predictions).argsort()[0][-10:])
-
         grads = t.gradient(score, featureMaps)
         alpha_c_k = tf.reduce_mean(grads, axis=(1,2))
         locMap = np.maximum(tf.reduce_sum(tf.multiply(alpha_c_k, featureMaps), axis=3).numpy()[0], 0)
         # 14 x 14 Map
-        return locMap, c, top_c
+        return locMap, c
 
     def getHeatmap(self, locMap, image):
         locMapResized = cv2.resize(locMap, (224, 224))
@@ -71,6 +69,30 @@ class GradCAM:
             inc = 1
         return drop, inc
 
+class GradCAMPlusPlus(GradCAM):
+    def __init__(self, model, layer):
+        super().__init__(model, layer)
+
+    def getLocalizationMap(self, image, c = 'None'):
+        gradModel = Model(inputs = self.model.inputs, outputs = [self.model.get_layer(self.layer).output, self.model.output])
+        with tf.GradientTape() as t:
+            (featureMaps, predictions) = gradModel(image)
+            if c == 'None':
+                c = np.argmax(predictions[0])
+            c = int(c)
+            score = predictions[:,c]
+        grads = t.gradient(score, featureMaps)
+        first_y = np.exp(score)*grads
+        second_y = np.exp(score)*grads*grads
+        third_y = np.exp(score)*grads*grads*grads
+        alpha_c_k_i_j_dem = second_y*2 + tf.reduce_sum(featureMaps)*third_y
+        alpha_denom = np.where(alpha_c_k_i_j_dem != 0.0, alpha_c_k_i_j_dem, np.ones(alpha_c_k_i_j_dem.shape))
+        alpha_c_k_i_j = second_y / alpha_denom
+        w_c_k = tf.reduce_sum(alpha_c_k_i_j*np.maximum(0,grads.numpy()[0]), axis=(1,2))
+        locMap = np.maximum(tf.reduce_sum(tf.multiply(w_c_k, featureMaps), axis=3).numpy()[0], 0)
+        # 14 x 14 Map
+        return locMap, c
+
 def preProcessImage(imagePath):
 
     image = I.load_img(imagePath, target_size=(224,224))
@@ -95,6 +117,7 @@ def parseArgs():
     parser.add_argument('--resultsPath', default='None', type=str)
     parser.add_argument('--layer', default='block5_conv3', type=str)
     parser.add_argument('--tolerance', default=30, type=int)
+    parser.add_argument('--gradcampp', action='store_true')
 
     return parser.parse_args()
 
@@ -103,10 +126,12 @@ def mainMultipleImages(args):
 
     model = VGG16(weights='imagenet')
 
-    gradCAM = GradCAM(model, args.layer)
+    gradCAM = 0
+    if args.gradcampp:
+        gradCAM = GradCAMPlusPlus(model, args.layer)
+    else:
+        gradCAM = GradCAM(model, args.layer)
 
-    labelsMap = pickle.load(open('labelsMap.p', 'rb'))
-    classificationFile = open('./classRelation.txt', 'w')
     resultsFile = open('./evaluation.txt', 'a')
 
     t_drop = 0
@@ -118,10 +143,8 @@ def mainMultipleImages(args):
             for name in files:
                 path = os.path.join(root, name)
                 image = preProcessImage(path)
-                locMap, c, _ = gradCAM.getLocalizationMap(image)
+                locMap, c = gradCAM.getLocalizationMap(image)
                 heatMap = gradCAM.getHeatmap(locMap, image)
-                
-                classificationFile.write(path + ' ---> ' + labelsMap[c] + '\n')
 
                 drop, inc = gradCAM.evaluate(locMap, path, c, args.tolerance)
                 t_drop += drop
@@ -136,26 +159,28 @@ def mainMultipleImages(args):
     resultsFile.write(args.layer + '\t' + str(t_drop/n_im) +'\t' + str(t_inc/n_im) + '\n')
 
     resultsFile.close()
-    classificationFile.close()
 
 def mainSimpleImage(args):
 
     model = VGG16(weights='imagenet')
-    
-    gradCAM = GradCAM(model, args.layer)
 
-    classMap = pickle.load(open('classMap.p', 'rb'))
+    gradCAM = 0
+    if args.gradcampp:
+        gradCAM = GradCAMPlusPlus(model, args.layer)
+        print('Gradcam++')
+    else:
+        gradCAM = GradCAM(model, args.layer)
+        print('Gradcam')
+
 
     path = args.imagePath
     image = preProcessImage(path)
-    c = classMap.get(args.imageClass, args.imageClass)
-    locMap, c, top_c = gradCAM.getLocalizationMap(image, c)
+    c = args.imageClass
+    locMap, c = gradCAM.getLocalizationMap(image, c)
     heatMap = gradCAM.getHeatmap(locMap, image)
     name = os.path.split(path)[-1]
     plt.imsave(args.resultsPath + args.layer + '_' + str(c) + '_' + name, np.uint8(heatMap))
-
-    labelsMap = pickle.load(open('labelsMap.p', 'rb'))
-
+    
 
 def mainMultipleLayers(args):
 
