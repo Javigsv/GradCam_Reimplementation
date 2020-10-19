@@ -20,19 +20,21 @@ from GradCAMPlusPlus import GradCAMPlusPlus
 
 def parseArgs():
     parser = argparse.ArgumentParser(description='audioExperiments')
-    parser.add_argument('--oneSpectrogram', default=True, type=bool)
+    parser.add_argument('--oneSpectrogram', default=True, type=bool, help="If you want to get the GradCAM over all spectrograms this should be set to False")
     parser.add_argument('--modelPath', default='./genreClassifier/output/model_songsWithTags_2000.h5', type=str)
     parser.add_argument('--resultsPath', default='None', type=str)
     parser.add_argument('--layer', default='last', type=str)
-    parser.add_argument('--genre', default=None, type=str)
+    parser.add_argument('--genre', default=None, type=str, help="Hip-Hop or Folk")
     parser.add_argument('--gradCAM', default=True, type=bool)
     parser.add_argument('--gradCAMpp', default=False, type=bool)
     return parser.parse_args()
 
 def mainAllSpectrograms(args, dataset, is_conv = 'conv'):
+    """
+    Compute GradCAM over all the spectrograms of the dataset. 
+    """
     model = tf.keras.models.load_model(args.modelPath)
     
-    # We get the GradCAM for all spectrograms in dataset 
     for sample_idx in tqdm(range(len(dataset))):
         image, genre_idx = dataset[sample_idx]
         input_height, input_width = image.shape
@@ -42,12 +44,16 @@ def mainAllSpectrograms(args, dataset, is_conv = 'conv'):
 
 
 def mainOneSpectrogram(args, dataset, is_conv = 'conv'):
+    """
+    Compute GradCAM over one random spectrogram from the genre specified in args.genre. 
+    """
     model = tf.keras.models.load_model(args.modelPath)
     
     input_height, input_width = dataset[0][0].shape
     
     random.shuffle(dataset)  
 
+    # Get random image with genre specified in args.genre
     image = np.array([])
     sample_idx = 0
     args_genre_number = genre_number(args.genre)
@@ -63,6 +69,11 @@ def mainOneSpectrogram(args, dataset, is_conv = 'conv'):
 
     
 def perform_GradCAM(args, model, image, is_conv, genre_idx, id=0):
+    """
+    Perform GradCAM or/ands GradCAM++over the layer specified in args.layer and it saves the result if 
+    args.resultsPath is specified.
+    """
+
     _, input_height, input_width, _ = image.shape
     if args.layer == 'all':
         for layer in model.layers:
@@ -110,7 +121,7 @@ def perform_GradCAM(args, model, image, is_conv, genre_idx, id=0):
 
 
 def main(input_spectrograms_file = 'genreClassifier/input_spectrograms_2000.pickle'):
-
+    # network input
     dataset = pickle.load(open(input_spectrograms_file, 'rb'))
 
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'

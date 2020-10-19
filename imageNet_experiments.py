@@ -17,6 +17,9 @@ from GradCAM import GradCAM
 from GradCAMPlusPlus import GradCAMPlusPlus
 
 def preProcessImage(imagePath, model, input_height, input_width):
+    """
+    Reshape the image to input_height and input_widht as it is a models' constraint
+    """
     image = I.load_img(imagePath, target_size=(input_height, input_width))
     image = I.img_to_array(image)
     image = np.reshape(image,(1, input_height, input_width,3))
@@ -41,7 +44,8 @@ def parseArgs():
 
 
 def mainMultipleImages(args, input_height, input_width):
-
+    """
+    """
     resultsFile = open('./eval/evaluation'+ asctime(gmtime()).replace(' ','_').replace(':','')+'.txt', 'a')
     if args.model == 'VGG16':
         model = VGG16(weights='imagenet')
@@ -106,6 +110,10 @@ def mainMultipleImages(args, input_height, input_width):
 
 
 def mainSimpleImage(args, input_height, input_width):
+    """
+    Perform gradCAM over a single image specified in args.imagePath. The result will be saved if
+    args.resultsPath has been specified.
+    """
     if args.model == 'VGG16':
         model = VGG16(weights='imagenet')
         is_conv = 'conv'

@@ -1,10 +1,8 @@
 import tensorflow as tf
-from tensorflow.keras import layers
 from tensorflow.keras.layers import Activation, Dense, Dropout, Conv1D, Conv2D, Flatten, BatchNormalization, ZeroPadding2D, MaxPooling2D, GlobalMaxPooling2D, GlobalAveragePooling1D, AveragePooling2D, Input, Add
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import regularizers
 from tensorflow.keras.optimizers import SGD
-import tensorflow.keras.backend as K
 from tensorflow.keras.models import load_model
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.utils import to_categorical
@@ -24,7 +22,7 @@ warnings.filterwarnings('ignore')
 
 def genre_number(i):
     """
-    Assign a number to each genre type
+    Assign a number to each genre type.
     """
     if i == 'Hip-Hop':
         return 0
@@ -34,7 +32,7 @@ def genre_number(i):
 
 def load_reference_table(file_name = 'music_analysis.csv', root_folder = "songsWithTags_wav"):
     """
-    Load table that contain the genres and the audio files paths.  
+    Load table that contains the genres and audio files paths.  
     """
     ref_table = pd.read_csv(file_name)
     ref_table['file_name'] = ref_table['file_name'].apply(lambda x: '{0:0>6}'.format(x))
@@ -94,18 +92,18 @@ def generate_dataset(ref_table, data_augmentation = False, root_folder = "songsW
 
 def clean_dataset(dataset):
     """
-    We will keep just the spectrograms with at least 431 features 
+    Delete spectrograms with less than 431 features .
     """
     dataset_cleaned = []
     for i in range(len(dataset)):
-        if dataset[i][0].shape[1]>=431: # and math.isnan(dataset[i][1])==False:
+        if dataset[i][0].shape[1]>=431:
             dataset_cleaned.append(dataset[i])
     return dataset_cleaned
 
 def split_dataset(dataset):
     """
-    Dataset will be splitted in train (80%), validation(10%) and test (10%) and reformat for being a valid 
-    input for the CNN (reshaping of input and one hot encoding of classes)
+    Dataset will be splitted in train (80%), validation(10%) and test (10%) and reformated to be a valid 
+    input for the CNN (reshaping of input and one hot encoding of classes).
     """
     random.shuffle(dataset)
 

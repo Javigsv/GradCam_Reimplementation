@@ -25,5 +25,4 @@ class GradCAMPlusPlus(GradCAM):
         alpha_c_k_i_j = second_y / alpha_denom
         w_c_k = tf.reduce_sum(alpha_c_k_i_j*np.maximum(0,grads.numpy()[0]), axis=(1,2))
         locMap = np.maximum(tf.reduce_sum(tf.multiply(w_c_k, featureMaps), axis=3).numpy()[0], 0)
-        # 14 x 14 Map
         return locMap, c
